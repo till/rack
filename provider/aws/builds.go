@@ -754,7 +754,21 @@ func (p *AWSProvider) authECR(host, access, secret string) (string, string, erro
 }
 
 func (p *AWSProvider) runBuild(build *structs.Build, method, url string, opts structs.BuildOptions) error {
-	log := Logger.At("runBuild").Namespace("method=%q url=%q", method, url).Start()
+	if p.BuildService {
+		return p.runBuildService(build, method, url, opts)
+	} else {
+		return p.runBuildTask(build, method, url, opts)
+	}
+}
+
+func (p *AWSProvider) runBuildService(build *structs.Build, method, url string, opts structs.BuildOptions) error {
+	return nil
+}
+
+func (p *AWSProvider) createBuildProject() error { return nil }
+
+func (p *AWSProvider) runBuildTask(build *structs.Build, method, url string, opts structs.BuildOptions) error {
+	log := Logger.At("runBuildTask").Namespace("method=%q url=%q", method, url).Start()
 
 	br, err := p.stackResource(p.Rack, "RackBuildTasks")
 	if err != nil {
@@ -837,7 +851,6 @@ func (p *AWSProvider) runBuild(build *structs.Build, method, url string, opts st
 	}
 
 	b.Status = "running"
-
 	b.Tags["task"] = *task.TaskArn
 
 	if err := p.BuildSave(b); err != nil {

@@ -11,6 +11,7 @@ services:
       - AWS_REGION
       - AWS_ACCESS
       - AWS_SECRET
+      - BUILD_SERVICE
       - CLIENT_ID=dev@convox.com
       - CLUSTER
       - CUSTOM_TOPIC

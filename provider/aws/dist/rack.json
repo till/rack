@@ -1754,7 +1754,7 @@
               "CLIENT_ID": { "Ref": "ClientId" },
               "CUSTOM_TOPIC": { "Fn::GetAtt": [ "CustomTopic", "Arn" ] },
               "CLUSTER": { "Ref": "Cluster" },
-              "BUILD_SERVICE": { "Fn::If": [ "RegionHasCodeBuild", "yes", "no" ] },
+              "BUILD_SERVICE": { "Fn::If": [ "RegionHasCodeBuild", "Yes", "No" ] },
               "DOCKER_IMAGE_API": { "Fn::Join": [ ":", [ "convox/api", { "Ref": "Version" } ] ] },
               "DYNAMO_BUILDS": { "Ref": "DynamoBuilds" },
               "DYNAMO_RELEASES": { "Ref": "DynamoReleases" },
