@@ -620,6 +620,29 @@ func (p *AWSProvider) updateStack(name string, template string, changes map[stri
 	return err
 }
 
+// Build spec used for the CodeBuild service
+var buildSpec = `version: 0.1
+
+phases:
+  install:
+    commands:
+      - echo Installing Go
+      - curl -s -o /go1.7.4.linux-amd64.tar.gz https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz
+      - tar -C /usr/local -xzf /go1.7.4.linux-amd64.tar.gz
+      - mkdir $GOPATH
+      - go get github.com/MiguelMoll/rack/api/cmd/build
+      - rm /go1.7.4.linux-amd64.tar.gz
+  build:
+    commands:
+      - echo Building app
+      - ls -l $GOPATH/bin
+      - echo $GOPATH
+      - ls -l /go/bin
+      - ls -l /go
+      - echo $PATH
+      - build
+`
+
 // http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
 var instanceTypes = []string{
 	"c1.medium",

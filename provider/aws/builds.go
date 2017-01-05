@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/codebuild"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/ecr"
 	"github.com/aws/aws-sdk-go/service/ecs"
@@ -753,6 +754,8 @@ func (p *AWSProvider) authECR(host, access, secret string) (string, string, erro
 	return parts[0], parts[1], nil
 }
 
+func (p *AWSProvider) createBuildServiceProject() error { return nil }
+
 func (p *AWSProvider) runBuild(build *structs.Build, method, url string, opts structs.BuildOptions) error {
 	if p.BuildService {
 		return p.runBuildService(build, method, url, opts)
@@ -762,10 +765,131 @@ func (p *AWSProvider) runBuild(build *structs.Build, method, url string, opts st
 }
 
 func (p *AWSProvider) runBuildService(build *structs.Build, method, url string, opts structs.BuildOptions) error {
+	log := Logger.At("runBuildTask").Namespace("method=%q url=%q", method, url).Start()
+
+	var project *codebuild.Project
+	projectName := fmt.Sprintf("%s-%s", p.Rack, build.App)
+
+	po, err := p.codebuild().BatchGetProjects(&codebuild.BatchGetProjectsInput{
+		Names: []*string{
+			aws.String(projectName),
+		},
+	})
+	if err != nil {
+		return log.Error(err)
+	}
+
+	auth, err := p.buildAuth(build)
+	if err != nil {
+		return err
+	}
+
+	if len(po.Projects) > 1 {
+		fmt.Println("--------------- build project found; doing nothing; size: ", len(po.Projects))
+		return nil
+
+	} else { // create build project if not present
+
+		a, err := p.AppGet(build.App)
+		if err != nil {
+			return err
+		}
+
+		push := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:{service}.{build}", a.Outputs["RegistryId"], p.Region, a.Outputs["RegistryRepository"])
+
+		params := &codebuild.CreateProjectInput{
+			Artifacts: &codebuild.ProjectArtifacts{
+				Type: aws.String("NO_ARTIFACTS"),
+			},
+			Environment: &codebuild.ProjectEnvironment{
+				ComputeType: aws.String("BUILD_GENERAL1_SMALL"), // TODO: determine compute type on build params
+				Image:       aws.String("aws/codebuild/docker:1.12.1"),
+				Type:        aws.String("LINUX_CONTAINER"),
+				EnvironmentVariables: []*codebuild.EnvironmentVariable{
+					{
+						Name:  aws.String("GOPATH"),
+						Value: aws.String("/go"),
+					},
+					{
+						Name:  aws.String("PATH"),
+						Value: aws.String("/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin:/go/bin"),
+					},
+					{
+						Name:  aws.String("BUILD_APP"),
+						Value: aws.String(build.App),
+					},
+					{
+						Name:  aws.String("BUILD_CONFIG"),
+						Value: aws.String(opts.Config),
+					},
+					{
+						Name:  aws.String("BUILD_AUTH"),
+						Value: aws.String(auth),
+					},
+					{
+						Name:  aws.String("BUILD_ID"),
+						Value: aws.String(build.Id),
+					},
+					{
+						Name:  aws.String("BUILD_PUSH"),
+						Value: aws.String(push),
+					},
+					//  --------------------------- RACK ENV
+					{
+						Name:  aws.String("PROVIDER"),
+						Value: aws.String("aws"),
+					},
+					{
+						Name:  aws.String("AWS_ACCESS"),
+						Value: aws.String(os.Getenv("AWS_ACCESS")),
+					},
+					{
+						Name:  aws.String("AWS_SECRET"),
+						Value: aws.String(os.Getenv("AWS_SECRET")),
+					},
+					{
+						Name:  aws.String("CLUSTER"),
+						Value: aws.String(os.Getenv("CLUSTER")),
+					},
+					{
+						Name:  aws.String("DYNAMO_BUILDS"),
+						Value: aws.String(os.Getenv("DYNAMO_BUILDS")),
+					},
+					{
+						Name:  aws.String("DYNAMO_RELEASES"),
+						Value: aws.String(os.Getenv("DYNAMO_RELEASES")),
+					},
+					{
+						Name:  aws.String("ENCRYPTION_KEY"),
+						Value: aws.String(os.Getenv("ENCRYPTION_KEY")),
+					},
+					{
+						Name:  aws.String("ROLLBAR_TOKEN"),
+						Value: aws.String(os.Getenv("ROLLBAR_TOKEN")),
+					},
+				},
+			},
+			Name: aws.String(projectName),
+			Source: &codebuild.ProjectSource{
+				Type:      aws.String("S3"),
+				Buildspec: aws.String(buildSpec),
+				Location:  aws.String("migs/code.zip"),
+			},
+			Description:      aws.String(fmt.Sprintf("Build project for %s", build.App)),
+			ServiceRole:      aws.String("arn:aws:iam::990037048036:role/CodeBuildServiceRole"),
+			TimeoutInMinutes: aws.Int64(60),
+		}
+		cpo, err := p.codebuild().CreateProject(params)
+		if err != nil {
+			return err
+		}
+
+		project = cpo.Project
+		fmt.Println("+++++++++++++ Project created: ", *project.Name)
+	}
+
 	return nil
 }
-
-func (p *AWSProvider) createBuildProject() error { return nil }
 
 func (p *AWSProvider) runBuildTask(build *structs.Build, method, url string, opts structs.BuildOptions) error {
 	log := Logger.At("runBuildTask").Namespace("method=%q url=%q", method, url).Start()

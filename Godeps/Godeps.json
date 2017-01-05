@@ -191,6 +191,11 @@
 			"Rev": "6ad900d30b0f1a41b14ee02300f7268bdabea1eb"
 		},
 		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/codebuild",
+			"Comment": "v1.6.9-2-g6ad900d",
+			"Rev": "6ad900d30b0f1a41b14ee02300f7268bdabea1eb"
+		},
+		{
 			"ImportPath": "github.com/aws/aws-sdk-go/service/dynamodb",
 			"Comment": "v1.6.9-2-g6ad900d",
 			"Rev": "6ad900d30b0f1a41b14ee02300f7268bdabea1eb"

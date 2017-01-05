@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go/service/codebuild"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecr"
@@ -144,6 +145,10 @@ func (p *AWSProvider) cloudwatch() *cloudwatch.CloudWatch {
 
 func (p *AWSProvider) cloudwatchlogs() *cloudwatchlogs.CloudWatchLogs {
 	return cloudwatchlogs.New(session.New(), p.config())
+}
+
+func (p *AWSProvider) codebuild() *codebuild.CodeBuild {
+	return codebuild.New(session.New(), p.config())
 }
 
 func (p *AWSProvider) dynamodb() *dynamodb.DynamoDB {
