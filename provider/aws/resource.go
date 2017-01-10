@@ -544,7 +544,7 @@ func resourceFromStack(stack *cloudformation.Stack) structs.Resource {
 	return structs.Resource{
 		Name:       name,
 		Stack:      *stack.StackName,
-		Type:       tags["Resource"],
+		Type:       tags["Service"],
 		Status:     humanStatus(*stack.StackStatus),
 		Outputs:    stackOutputs(stack),
 		Parameters: params,
