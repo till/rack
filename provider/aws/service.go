@@ -221,6 +221,10 @@ func (p *AWSProvider) serviceApps(s structs.Service) (structs.Apps, error) {
 		if strings.HasSuffix(key, "Link") {
 			// Extract app name from log group
 			index := strings.Index(value, "-LogGroup")
+			// avoid runtime panic
+			if index > len(value) {
+				continue
+			}
 			r := strings.NewReplacer(fmt.Sprintf("%s-", p.Rack), "", value[index:], "")
 			app := r.Replace(value)
 
